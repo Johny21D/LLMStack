@@ -1,4 +1,3 @@
-
 # Implementation Research — Smart Daily Digest
 
 ## Feature Summary
@@ -16,7 +15,7 @@ stream with a single, actionable morning message so students never miss a deadli
 ### User Flows
 
 **Student (primary consumer)**
-1. Student logs in to Canvas (or checks email) in the morning.
+1. Student checks email or Canvas in the morning.
 2. They receive one digest — email and/or in-app bell notification — listing:
    - Items due today (hard deadline)
    - Items due in the next 3 days (upcoming)
@@ -47,16 +46,11 @@ stream with a single, actionable morning message so students never miss a deadli
 
 ### Interaction with Existing Canvas Concepts
 
-- **Enrollments** — digest is scoped to active student enrollments only. Concluded
-  courses are excluded.
-- **Assignments** — uses the existing `Assignment` model. Respects overrides
-  (differentiated assignments, section overrides) via `AssignmentOverrideApplicator`.
-- **Notification Preferences** — Canvas already has a `NotificationPolicy` model with
-  frequency options (`immediately`, `daily`, `weekly`, `never`). The digest adds a new
-  notification type `digest_daily` that plugs into this system.
+- **Enrollments** — digest is scoped to active student enrollments only. Concluded courses are excluded.
+- **Assignments** — uses the existing `Assignment` model. Respects overrides (differentiated assignments, section overrides) via `AssignmentOverrideApplicator`.
+- **Notification Preferences** — Canvas already has a `NotificationPolicy` model with frequency options (`immediately`, `daily`, `weekly`, `never`). The digest adds a new notification type `digest_daily` that plugs into this system.
 - **Feature Flags** — guarded behind a Canvas `FeatureFlag` so institutions can opt in.
-- **Time Zones** — delivery time must respect the student's Canvas time zone setting,
-  not server time.
+- **Time Zones** — delivery time must respect the student's Canvas time zone setting, not server time.
 
 ### UX Risks and Tradeoffs
 
@@ -160,15 +154,63 @@ The MCP integration in Lab 4 should track:
 
 ---
 
-## 4. Codebase Analysis
+## 4. Codebase Analysis Using the analyze-repo Agent
 
-### Agent Workflow Evidence
+### How to Run the Agent (Step-by-Step Instructions)
 
-The Lab 2 agent (`agents/analyze-repo.md`) was used to build an index of the Canvas LMS
-fork and query key subsystems. The following findings come from reading
-`manifest.json`, `folder_summaries.json`, and targeted `query_index.py` lookups.
+Follow these steps exactly to reproduce this analysis against your local Canvas LMS clone.
+All commands run from the root of the course repo (`LLMStack/`). Your Canvas fork must
+be cloned locally (e.g. at `~/canvas-lms`).
 
-**Session notes (selected output):**
+**Step 1 — Build the index (run this in your terminal, NOT inside the LLM)**
+```bash
+python agents/scripts/build_index.py ~/canvas-lms
+```
+This writes two files into the Canvas repo:
+- `.analysis/manifest.json` — directory tree, file counts, line counts, language breakdown, entry points
+- `.analysis/symbol_map.json` — every class and function mapped to its file
+
+Check that both files exist before continuing. If the script errors, confirm that
+`~/canvas-lms` is a valid git repo with at least one committed file.
+
+**Step 2 — Read manifest.json**
+Open `.analysis/manifest.json` in your editor or paste it into the LLM chat.
+Identify the top 5 directories by line count and all listed entry points.
+Do NOT open any Canvas source file yet — the manifest is enough to plan next steps.
+
+**Step 3 — Summarize folders (run in your terminal)**
+```bash
+python agents/scripts/summarize_folders.py ~/canvas-lms
+```
+This writes `.analysis/folder_summaries.json`. Read it to understand each top-level
+directory's purpose. This is the primary architectural source — read it once and do
+not re-read it.
+
+**Step 4 — Run targeted symbol lookups (run in your terminal)**
+For each symbol relevant to your feature, run:
+```bash
+python agents/scripts/query_index.py ~/canvas-lms --symbol NotificationPolicy
+python agents/scripts/query_index.py ~/canvas-lms --symbol DelayedMessage
+python agents/scripts/query_index.py ~/canvas-lms --symbol AssignmentOverrideApplicator
+python agents/scripts/query_index.py ~/canvas-lms --symbol DiscussionTopic
+```
+Each command returns the file path(s) where that symbol is defined. Paste the output
+into the LLM chat alongside your question. Do not open the source files directly.
+
+**Step 5 — Open entry point files only if needed**
+Only open a file if ALL three conditions are true:
+- It is listed as an entry point in `manifest.json`
+- It is under 300 lines
+- You have not already read it this session
+
+**Step 6 — Write findings**
+Document hypotheses, concrete findings, and open questions based only on what the
+scripts returned. Stay under 40% of model context (≈64k tokens for Claude Sonnet).
+
+---
+
+### Agent Session Notes (Selected Output)
+
 ```
 # Step 1 output summary
 total_files: 14,203
@@ -183,7 +225,7 @@ top directories by line count:
 
 entry_points identified: config/routes.rb, app/jobs/, Gemfile
 
-# Step 4 query — symbol lookup
+# Step 4 — symbol lookups
 query_index.py --symbol NotificationPolicy
   → app/models/notification_policy.rb
   → app/controllers/notification_preferences_controller.rb
@@ -207,10 +249,10 @@ query_index.py --symbol DiscussionTopic
 | Email template | `app/views/daily_digest_mailer/` (new) | ERB email views follow this pattern |
 | Notification type | `db/migrate/` + `app/models/notification.rb` | New notification type record needed |
 | Notification policy | `app/models/notification_policy.rb` | Opt-out hooks into existing model |
-| Feature flag | `app/models/feature_flags/` or `config/feature_flags/` | Canvas feature flag definitions |
+| Feature flag | `config/feature_flags/` | Canvas feature flag definitions |
 | React UI (prefs) | `ui/features/notification_preferences/` | Existing notification prefs React bundle |
 | Routes | `config/routes.rb` | Only if a new API endpoint is needed for prefs |
-| DB migration | `db/migrate/` | `daily_digest_sent_at` column on enrollments or a new `digest_deliveries` table |
+| DB migration | `db/migrate/` | `daily_digest_sent_at` column or new `digest_deliveries` table |
 
 ### Concrete Findings
 
@@ -227,13 +269,20 @@ Canvas uses `delayed_job` with job classes in `app/jobs/`. Existing jobs like
 after each run.
 
 **Assignment override applicator:**
-`lib/assignment_override_applicator.rb` already contains `assignment_overridden_for(assignment, student)` — this is the correct method to call to get the student-specific due date. Using this means FR-3 (overrides respected) is largely already solved.
+`lib/assignment_override_applicator.rb` already contains
+`assignment_overridden_for(assignment, student)` — the correct method to call to get
+the student-specific due date. FR-3 (overrides respected) is largely already solved
+by this existing utility.
 
 **Submission check:**
-`Submission` model has a `workflow_state` column. States `'submitted'`, `'graded'` indicate completion. The query `Submission.where(user: student, workflow_state: ['submitted', 'graded'])` is the correct exclusion filter for FR-4.
+`Submission` model has a `workflow_state` column. States `'submitted'`, `'graded'`
+indicate completion. The query
+`Submission.where(user: student, workflow_state: ['submitted', 'graded'])` is the
+correct exclusion filter for FR-4.
 
 **Discussion completion:**
-`DiscussionEntry.where(discussion_topic: topic, user: student).exists?` is the pattern Canvas uses to check student participation, visible in existing gradebook logic.
+`DiscussionEntry.where(discussion_topic: topic, user: student).exists?` is the pattern
+Canvas uses to check student participation, visible in existing gradebook logic.
 
 ### Open Questions
 
@@ -247,9 +296,18 @@ after each run.
 
 ## 5. Testing and Verification Plan
 
-### Unit-Level Tests
+### What Will Be Tested
 
-These are isolated RSpec tests with no external dependencies:
+1. **Digest content accuracy** — correct items appear for each student based on enrollment, due dates, and submission status.
+2. **Exclusion logic** — submitted assignments, concluded courses, and opted-out students are correctly excluded.
+3. **Delivery mechanics** — email and in-app notification both fire; links resolve correctly.
+4. **Idempotency** — re-running the job does not send duplicate digests.
+5. **Feature flag gating** — disabling the flag stops the job entirely.
+6. **FERPA compliance** — no grade or score data appears anywhere in the email.
+
+### How It Will Be Tested
+
+#### Unit-Level Tests (RSpec, isolated)
 
 | Unit Under Test | What to Assert |
 |-----------------|---------------|
@@ -262,19 +320,17 @@ These are isolated RSpec tests with no external dependencies:
 | `DailyDigestMailer#digest_email` | Email body contains NO grade or score data |
 | Assignment override logic | Student with override gets override date, not base date |
 
-### Integration Points
+#### Integration Tests
 
-| Integration | Test Approach |
-|-------------|--------------|
-| Job → DB (assignments, submissions, enrollments) | RSpec with `factory_bot` fixtures; test with real SQLite/PG in CI |
+| Integration | How |
+|-------------|-----|
+| Job → DB (assignments, submissions, enrollments) | RSpec with `factory_bot` fixtures; test with real PG in CI |
 | Job → Mailer → SMTP | Use ActionMailer test delivery mode; assert `ActionMailer::Base.deliveries` |
 | Notification type → `notification_policies` opt-out | Create a `NotificationPolicy` with `frequency: 'never'`; assert no email queued |
 | Feature flag → job gating | Assert job exits early when flag disabled |
 | Re-enqueue (job schedules next run) | Assert `DelayedJob` queue contains next run after `perform` |
 
-### Manual / Exploratory Checks
-
-These require a running Canvas instance:
+#### Manual / Exploratory Checks (requires running Canvas instance)
 
 - **Role check:** Log in as a student → verify digest arrives. Log in as instructor → verify no digest.
 - **Opt-out flow:** Go to Notification Preferences → set Daily Digest to Never → confirm no email next run.
@@ -285,24 +341,24 @@ These require a running Canvas instance:
 - **Empty digest:** Student with no upcoming work → confirm no email is sent (no empty digest spam).
 - **Regression:** Confirm existing per-event notifications still fire normally after feature is enabled.
 
-### Acceptance Criteria (mapped to Functional Requirements)
+### Success vs. Failure Criteria (mapped to Functional Requirements)
 
-| FR | Acceptance Criterion | Test Type |
-|----|---------------------|-----------|
-| FR-1 | Job logs show exactly one digest per student per 24h window | Integration |
-| FR-2 | Email lists all assignments due ≤72h that are unsubmitted | Unit + Integration |
-| FR-3 | Override date appears for student with differentiated assignment | Unit + Manual |
-| FR-4 | Submitted assignment absent from digest | Unit + Integration |
-| FR-5 | Announcement posted after last digest appears; older one does not | Unit + Integration |
-| FR-6 | Unposted graded discussion appears; posted one does not | Unit + Manual |
-| FR-7 | Opt-out student receives no email in manual test | Manual |
-| FR-8 | Email and in-app notification both appear on delivery | Manual |
-| FR-9 | Each link in email navigates to correct Canvas page | Manual |
-| FR-10 | Email arrives before 7 AM student local time | Manual (time zone test) |
-| FR-11 | Disabling feature flag stops job from sending | Integration + Manual |
+| FR | What Success Looks Like | What Failure Looks Like | Test Type |
+|----|------------------------|------------------------|-----------|
+| FR-1 | Job logs show exactly one digest per student per 24h | Student receives 2+ emails in one day | Integration |
+| FR-2 | Email lists all unsubmitted assignments due ≤72h | Missing items or items from wrong course appear | Unit + Integration |
+| FR-3 | Override due date shown, not base due date | Base date shown for student with override | Unit + Manual |
+| FR-4 | Submitted assignment absent from digest | Already-submitted work appears in email | Unit + Integration |
+| FR-5 | New announcement appears; old one does not | Stale announcements repeat across digests | Unit + Integration |
+| FR-6 | Unposted graded discussion appears; posted one does not | Completed discussions listed as incomplete | Unit + Manual |
+| FR-7 | Opted-out student receives zero emails | Email arrives despite `never` preference | Manual |
+| FR-8 | Both email and in-app notification appear | One channel missing entirely | Manual |
+| FR-9 | Each link opens the correct Canvas page | Links 404 or route to wrong item | Manual |
+| FR-10 | Email arrives before 7 AM student local time | Email arrives late or at server time | Manual (staging) |
+| FR-11 | Disabling flag stops all digest sending | Job fires even when flag is off | Integration + Manual |
 
 ### Areas Where Automation Is Impractical
 
-- **Email rendering across clients** (Gmail, Outlook, Apple Mail) — visual regression not automatable in CI. Mitigation: use a known-good HTML email template from Canvas's existing mailer; manual spot-check on 3 clients before launch.
+- **Email rendering across clients** (Gmail, Outlook, Apple Mail) — visual regression is not automatable in CI. Mitigation: use a known-good HTML email template from Canvas's existing mailer; manual spot-check on 3 clients before launch.
 - **Exact delivery time** — testing real cron timing in CI is flaky. Mitigation: unit test the time calculation logic; manually verify in staging environment.
 - **FERPA audit** — no automated tool catches all cases. Mitigation: pre-launch checklist reviewed by a second developer confirming no grade data in email body, logs, or URLs.
