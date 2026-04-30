@@ -1,17 +1,5 @@
 # Implementation Research — Daily Assignment Digest
 
-## 0. Pointer to the pitch
-
-The "what" and "why" of this feature live in
-[`feature-1.md`](./feature-1.md). In one sentence: a once-a-day
-notification, sent through Canvas's existing notification framework,
-that tells each student how many assignments they still have to
-complete and which course each one belongs to. This document is the
-research package — design considerations, requirements, codebase
-findings, and a verification plan — that makes implementation
-tractable without writing the implementation here.
-
----
 
 ## 1. Design considerations
 
