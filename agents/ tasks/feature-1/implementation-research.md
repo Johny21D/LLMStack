@@ -96,18 +96,3 @@ and they're the ones most helped by an aggregated daily summary.
   existing notification preferences.
 - No student ever sees another student's data in their digest.
 
-## Open questions to resolve in research
-
-- What time of day should the digest run, and in whose time zone?
-  (Canvas is multi-tenant and global.)
-- How exactly does Canvas's notification framework model "scheduled,
-  aggregated, per-user" notifications? Is this a new notification
-  category, or does an existing category fit?
-- How does the feature interact with students who are enrolled in
-  dozens of courses (e.g. observers, TAs cross-listed as students)?
-- What is the right behavior for unpublished courses, concluded
-  courses, and assignments hidden from students?
-- What's the right default delivery channel for students who haven't
-  customized their notification preferences?
-
-These are tracked and answered in `implementation-research.md`.
