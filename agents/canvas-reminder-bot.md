@@ -8,6 +8,7 @@ verified_against:
   - script: canvas_reminder.py @ commit c8c528d
   - model: claude-haiku-4-5-20251001
 re_ground_on:
+  - any edit to NOTIFY_THRESHOLDS, THRESHOLD_TO_TIER, TIER_INFO, or CRITICAL_TIERS
   - any merge to main on Canvas-Reminder-
   - any edit to canvas_reminder.py or its workflow YAML
   - rotation of ANTHROPIC_API_KEY, CANVAS_ACCESS_TOKEN, or the ntfy topic
@@ -34,9 +35,9 @@ GitHub Actions — free tier.
 
 ## Trigger
 
-- Cron schedule: `<FILL_IN_FROM_WORKFLOW>` (e.g. every 6h per README)
-- Manual: workflow_dispatch enabled / disabled — `<CONFIRM>`
-
+- Cron schedule: `0 */6 * * *` — every 6 hours, on the hour (UTC)
+- Manual: `workflow_dispatch` enabled
+  
 ## Inputs / secrets (names only, never values)
 
 - `ANTHROPIC_API_KEY` — repo secret
@@ -52,17 +53,31 @@ GitHub Actions — free tier.
 3. Group by course.
 4. Call Claude Haiku once per batch with assignment titles + due times to
    get a time estimate and "start tonight" suggestion.
-5. Assign urgency tier and color:
-   - Tier 1 / <COLOR>: <THRESHOLD> — <FILL_IN>
-   - Tier 2 / <COLOR>: <THRESHOLD> — <FILL_IN>
-   - Tier 3 / <COLOR>: <THRESHOLD> — <FILL_IN>
+5. Assign urgency tier from hours-until-due. Crossing any threshold in
+   `NOTIFY_THRESHOLDS = [72, 48, 36, 24, 18, 12, 9, 6, 3, 1]` triggers a
+   notification at the corresponding tier:
+
+   | Tier        | Emoji | Triggers at (hours-until-due) | ntfy priority | Label                     |
+   |-------------|-------|-------------------------------|---------------|---------------------------|
+   | `radar`     | 🟢    | 72                            | low           | ON THE RADAR              |
+   | `heads_up`  | 🟡    | 48, 36                        | default       | HEADS UP                  |
+   | `tomorrow`  | 🟠    | 24, 18                        | high          | DUE TOMORROW              |
+   | `urgent`    | 🔴    | 12, 9, 6                      | urgent        | URGENT — DUE SOON         |
+   | `panic`     | 🚨    | 3                             | urgent        | PANIC — DROP EVERYTHING   |
+   | `last_call` | 💀    | 1                             | urgent        | LAST CALL — <1HR LEFT     |
+
+   Tiers in `CRITICAL_TIERS = {"last_call", "panic", "urgent"}` bypass
+   quiet hours. All tier mappings live in `canvas_reminder.py` under
+   `THRESHOLD_TO_TIER` and `TIER_INFO` — this table is a mirror that the
+   `last_verified` header governs.
 6. Push to ntfy with priority matching the highest tier in the batch.
 7. Update `state.json`, commit with `[skip ci]`.
 
 ## Known drift risks (why this spec has a `last_verified` header)
 
-- The urgency thresholds in section 5 live in `canvas_reminder.py`, not in
-  the spec — easy for them to drift apart.
+- The tier table in section 5 mirrors `NOTIFY_THRESHOLDS`, `THRESHOLD_TO_TIER`,
+  `TIER_INFO`, and `CRITICAL_TIERS` in `canvas_reminder.py`. Any code edit to
+  those four constants will silently invalidate this spec.
 - Model string is pinned in the workflow env; Anthropic releases occasionally
   obsolete it.
 - Canvas course IDs roll over each semester. The bot uses "all active
