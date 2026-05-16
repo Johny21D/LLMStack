@@ -12,7 +12,7 @@ re_ground_on:
   - any edit to canvas_reminder.py or its workflow YAML
   - rotation of ANTHROPIC_API_KEY, CANVAS_ACCESS_TOKEN, or the ntfy topic
   - any change to state.json schema
-  - >7 days idle since last_verified
+  -  ">7 days idle since last_verified"
 ---
 
 # Canvas Reminder Bot
