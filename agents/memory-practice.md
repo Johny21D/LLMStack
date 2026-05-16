@@ -68,8 +68,11 @@ touched spec gets re-grounded, not just one.
 
 ## Connection to other agent artifacts
 
-This pattern attaches to `agents/analyze-repo.md` (the repo-analysis agent
-from Lab 2): when that agent runs, the first thing it does now is read every
+The first concrete artifact governed by this pattern is
+`agents/canvas-reminder-bot.md` in this same folder — it ships with a
+populated `last_verified` header and `verified_against` evidence. The
+pattern also attaches to `agents/analyze-repo.md` (the repo-analysis agent
+from Lab 2): when that agent runs, the first thing it does is read every
 `agents/*.md` header and flag any spec whose `last_verified` is older than
 its associated workflow's last commit date. That turns staleness into a
 report instead of a silent failure.
