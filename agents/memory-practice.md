@@ -96,28 +96,47 @@ via `git diff --name-only`), not the whole suite.
 
 ## Evidence of use
 
-Session excerpt (2026-05-16, working on a Canvas Reminder Bot tweak — names
-and topic redacted):
+Session log — 2026-05-16, creating `agents/canvas-reminder-bot.md` and
+re-grounding against the `Canvas-Reminder-` repo (private):
 
-> **Me:** Update the urgency thresholds in the Canvas Reminder Bot so
-> anything <24h is red.
+> **Task:** Stand up a fresh spec for the Canvas Reminder Bot, with the
+> `last_verified` YAML header pre-applied, populated from the live repo
+> rather than from memory.
 >
-> **Claude:** Before I edit, the `last_verified` on
-> `agents/canvas-reminder-bot.md` is 2026-04-22 — that's 24 days ago and
-> there have been three merges to `main` since (`git log` shows commits
-> touching `.github/workflows/canvas-reminder.yml`). Re-grounding now.
+> **Re-grounding actions performed:**
+> - Opened `.github/workflows/reminder.yml` → confirmed cron schedule
+>   `0 */6 * * *` and `workflow_dispatch` enabled.
+> - Opened the Actions tab → last successful run was #39 at
+>   2026-05-15 21:25 MT. Recorded run number in `verified_against`.
+> - Pulled repo HEAD SHA `c8c528d` and used it for both the workflow and
+>   the script entries in `verified_against`.
+> - Opened `canvas_reminder.py` → searched for `tier` → found
+>   `NOTIFY_THRESHOLDS`, `THRESHOLD_TO_TIER`, `TIER_INFO`, and
+>   `CRITICAL_TIERS`. The actual tier system has six tiers triggered at
+>   ten hour thresholds, not three tiers as I had assumed when drafting.
+>   Updated section 5 of the spec to mirror the code exactly.
 >
-> Reading the workflow YAML at HEAD… the urgency logic is currently in a
-> Python step, not the Claude Haiku prompt as the spec claims. The spec is
-> stale on that point. Want me to (a) fix the spec to match reality first,
-> then make your threshold edit, or (b) move the logic into the prompt as
-> the spec assumes?
+> **Drift caught by re-grounding:** my mental model of the bot was wrong
+> on tier count (3 vs 6) and on the existence of `CRITICAL_TIERS` /
+> quiet-hours bypass. If I had skipped re-grounding and edited the bot
+> based on the assumed 3-tier model, the change would have been
+> nonsensical.
 >
-> **Me:** (a). Fix the spec, then update the thresholds.
-
-Without the header rule, the agent would have happily edited a prompt that
-isn't where the logic lives, and I'd have shipped a no-op change.
-
+> **Header committed:**
+> ```yaml
+> last_verified: 2026-05-16
+> verified_against:
+>   - repo: Canvas-Reminder- (private)
+>   - workflow: .github/workflows/reminder.yml @ commit c8c528d
+>   - last successful run: #39 (2026-05-15 21:25 MT)
+>   - script: canvas_reminder.py @ commit c8c528d
+>   - model: claude-haiku-4-5-20251001
+> ```
+>
+> **Follow-up `re_ground_on` rule added** based on what I learned:
+> *"any edit to NOTIFY_THRESHOLDS, THRESHOLD_TO_TIER, TIER_INFO, or
+> CRITICAL_TIERS"* — because those four constants are the source of
+> truth that the spec's section 5 table mirrors.
 ## Operational notes
 
 - Headers live in the file, not in any external memory store — they survive
