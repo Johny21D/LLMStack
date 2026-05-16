@@ -1,11 +1,11 @@
 ---
 agent: canvas-reminder-bot
-last_verified: TODO_FILL_DATE_AFTER_VERIFY
+last_verified: 2026-05-16
 verified_against:
   - repo: Canvas-Reminder- (private)
-  - workflow: .github/workflows/<FILENAME>.yml @ commit <SHA>
-  - last successful run: #<RUN_NUMBER>
-  - script: canvas_reminder.py @ commit <SHA>
+  - workflow: .github/workflows/reminder.yml @ commit c8c528d
+  - last successful run:#39 (2026-05-15 21:25 MT)
+  - script: canvas_reminder.py @ commit c8c528d
   - model: claude-haiku-4-5-20251001
 re_ground_on:
   - any merge to main on Canvas-Reminder-
@@ -28,7 +28,7 @@ GitHub Actions — free tier.
 
 - Repo: `Canvas-Reminder-` (private)
 - Script: `canvas_reminder.py`
-- Workflow: `.github/workflows/<FILL_IN>.yml`
+- Workflow: `.github/workflows/<FILL_IN>.yml.`
 - State: `state.json` (committed back to the repo by the bot to deduplicate
   notifications across runs)
 
