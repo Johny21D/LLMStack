@@ -1,4 +1,4 @@
-# Feature Implementation Agent
+# feature implementation Agent
 
 ## Role
 This agent helps me implement work items from my feature plan, one slice at a time. For each session it takes a single work item off my GitHub Project board, makes the change in my `Johny21D/LLMStack` fork, opens a PR, and keeps the board honest through the GitHub MCP.
