@@ -4,6 +4,7 @@
 > Status: behind flag, rolling out per the plan below
 > Tracking issue: #15
 > Source of truth: `agents/tasks/feature-1/feature-1.md`,
+> Last updated: 2026-05-19 (initial documentation)
 > `agents/tasks/feature-1/implementation-research.md`
 
 ## What this feature does
