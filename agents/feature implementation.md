@@ -12,7 +12,10 @@ This agent helps me implement work items from my feature plan, one slice at a ti
 ## Inputs
 - Feature scope: `agents/tasks/feature-1/feature-1.md`
 - Implementation research: `agents/tasks/feature-1/implementation-research.md`
-- GitHub Project: titled `[YOUR PROJECT TITLE]` in my fork (project number `#[NUM]`)
+- GitHub Project: titled `GitHub Project: titled `Feature 1 - Daily Assignment Digest` in my fork.
+A duplicate project (`Feature 1 — Daily Assignment Digest`, em-dash) exists
+from earlier setup and is scheduled for cleanup; the dash version is the
+canonical board.`
   - Located via the GitHub MCP `list_projects` tool, or by direct number
 - Current item: I tell the agent which item I'm working on at the start of each session (issue number or item title)
 
