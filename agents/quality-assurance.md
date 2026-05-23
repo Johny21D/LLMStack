@@ -35,14 +35,20 @@ The agent needs all of the following to act:
 
 ## Test commands (this fork — Python / pytest)
 
+Tests in this repo live beside the package under `llmstack/<app>/tests/` and follow
+`test_*.py` (mirroring existing files like `llmstack/common/tests/`).
+
 | Purpose | Command |
 |---------|---------|
-| Run the whole suite (default gate) | `pytest -q` |
-| Run only the tests for the changed module | `pytest -q tests/test_<module>.py` |
-| Run a single test while iterating | `pytest -q tests/test_<module>.py::test_<name>` |
-| Show coverage for sanity (not a hard gate) | `pytest -q --cov=<package>` |
+| Run only the tests for the changed module (default gate) | `python -m pytest -q llmstack/common/tests/test_<module>.py` |
+| Run a single test while iterating | `python -m pytest -q llmstack/common/tests/test_<module>.py::TestClass::test_<name>` |
+| Run a whole app's tests | `python -m pytest -q llmstack/<app>/tests/` |
 
-> **Definition of passing:** `pytest` exits `0` with zero failures and zero errors.
+> Prefer the targeted file/app form. A full-repo `pytest` run bootstraps Django and the
+> whole app, so for a self-contained helper, run just its test file — the module under
+> test should avoid Django imports so it tests in isolation.
+
+> **Definition of passing:** `pytest` exits `0` with zero failures and zero errors
 > Skips/xfails are allowed only when they are intentional and noted in the evidence
 > file. A green run on the **branch tip that will be merged** is what counts — not an
 > earlier commit.
@@ -56,11 +62,12 @@ The agent needs all of the following to act:
    docs/config/tooling only? (See criteria below.) This decision drives everything.
 3. **If behavior changes — propose or extend tests.** Identify the smallest credible
    automated check that exercises the new/changed behavior (a unit test where possible).
-   Write or update tests under `tests/`, following existing naming
-   (`tests/test_*.py`, functions `test_*`). Use AAA: clear Arrange / Act / Assert with
-   the unit isolated from I/O, network, and time where reasonable.
-4. **Run the command.** `pytest -q` (or the targeted file first, then the full suite).
-   Capture the exact command and the summary line of the output.
+   Write or update tests under `llmstack/<app>/tests/`, following existing naming
+   (`test_*.py`, `unittest.TestCase` classes with `test_*` methods). Use AAA: clear
+   Arrange / Act / Assert with the unit isolated from I/O, network, and time where
+   reasonable.
+4. **Run the command.** `python -m pytest -q llmstack/<app>/tests/test_<module>.py` for
+   the changed module. Capture the exact command and the summary line of the output.
 5. **Drive to green.** If tests fail: fix the test, or narrow scope, or — if the failure
    is real and out of scope — stop and document the blocker honestly. Do not loosen an
    assertion just to make it pass.
